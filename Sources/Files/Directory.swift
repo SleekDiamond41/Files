@@ -9,7 +9,21 @@
 import Foundation
 
 @dynamicMemberLookup
-public struct Directory: Equatable, CustomStringConvertible {
+public struct Directory: IOItem, Equatable, CustomStringConvertible {
+	
+	internal enum IOError {
+		case noSuchItem
+		case unknown(NSError)
+		
+		init(_ error: NSError) {
+			switch error.code {
+			case NSFileNoSuchFileError:
+				self = .noSuchItem
+			default:
+				self = .unknown(error)
+			}
+		}
+	}
 	
 	// MARK: - Properties
 	
@@ -19,12 +33,15 @@ public struct Directory: Equatable, CustomStringConvertible {
 	// MARK: - Computed Properties
 	
 	public var description: String {
-		return url.description
+		return url.absoluteString
 	}
 	
 	public var exists: Bool {
 		var isDir = ObjCBool(false)
-		return FileManager.local.fileExists(atPath: url.absoluteString, isDirectory: &isDir) && isDir.boolValue
+		if (FileManager.local.fileExists(atPath: url.path, isDirectory: &isDir)) {
+			return isDir.boolValue
+		}
+		return false
 	}
 	
 	// MARK: - Initializers
@@ -40,12 +57,59 @@ public struct Directory: Equatable, CustomStringConvertible {
 		return appending(name)
 	}
 	
-	func appending(_ dir: String) -> Directory {
+	public func appending(_ dir: String) -> Directory {
 		return Directory(url: url.appendingPathComponent(dir))
 	}
 	
-	public func file(named name: String, ext: String) -> File {
-		return File(dir: self, name: name, ext: ext)
+	func create() throws {
+		try FileManager.local.createDirectory(atPath: url.path, withIntermediateDirectories: true, attributes: nil)
+		
+	}
+	
+	public func file(_ name: String, ext: String) -> File {
+		return _File(dir: self, url: url
+			.appendingPathComponent(name)
+			.appendingPathExtension(ext))
+	}
+	
+	public func delete() {
+		do {
+			try FileManager.local.removeItem(atPath: url.path)
+		} catch let error as NSError {
+			switch IOError(error) {
+			case .noSuchItem:
+				// that's all good
+				break
+			case .unknown:
+				preconditionFailure(String(reflecting: error))
+			}
+		}
+	}
+	
+	@available(OSX 10.11, iOS 9.0, *)
+	public var files: [File] {
+		do {
+			return try FileManager.local.contentsOfDirectory(at: url,
+															 includingPropertiesForKeys: nil,
+															 options: [])
+				.filter { !$0.hasDirectoryPath }	// don't include directories
+				.map { _File(dir: self, url: $0) }
+		} catch {
+			preconditionFailure("currently no handling for: \(String(describing: error))")
+		}
+	}
+	
+	@available(OSX 10.11, iOS 9.0, *)
+	public var directories: [Directory] {
+		do {
+			return try FileManager.local.contentsOfDirectory(at: url,
+															 includingPropertiesForKeys: nil,
+															 options: [])
+				.filter { $0.hasDirectoryPath }	// don't include directories
+				.map { Directory(url: $0) }
+		} catch {
+			preconditionFailure("currently no handling for: \(String(describing: error))")
+		}
 	}
 }
 
@@ -53,7 +117,7 @@ public struct Directory: Equatable, CustomStringConvertible {
 extension Directory {
 	
 	public static var library: Directory? {
-		guard let url = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first else {
+		guard let url = FileManager.local.urls(for: .libraryDirectory, in: .userDomainMask).first else {
 			return nil
 		}
 		
@@ -61,7 +125,7 @@ extension Directory {
 	}
 	
 	public static var documents: Directory? {
-		guard let url = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+		guard let url = FileManager.local.urls(for: .documentDirectory, in: .userDomainMask).first else {
 			return nil
 		}
 		
@@ -69,23 +133,47 @@ extension Directory {
 	}
 	
 	public static var appSupport: Directory {
-		guard let url = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
+		guard let url = FileManager.local.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
 			preconditionFailure("application support directory should always be available... :/")
 		}
 		
 		return Directory(url: url)
 	}
 	
+	@available(OSX 10.12, iOS 10.0, watchOS 3.0, *)
 	public static var temp: Directory {
-		preconditionFailure("temp directory is not yet implemented")
-		// TODO: return a default directory pointing to the tmp folder
+		
+		return Directory(url: FileManager.local.temporaryDirectory)
 	}
 	
 	public static var cache: Directory? {
-		guard let url = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first else {
+		guard let url = FileManager.local.urls(for: .cachesDirectory, in: .userDomainMask).first else {
 			return nil
 		}
 		
 		return Directory(url: url)
+	}
+}
+
+// can't Trash things on the 🍎 Watch apparently
+@available(watchOS, introduced: 1.0, unavailable)
+@available(OSX 10.12, iOS 11.0, *)
+extension Directory {
+	
+	/// Moves the item to the trash. Crashes if unsuccessful. (I should probably change that at some point)
+	///
+	/// - Note: Only available in OSX 10+
+	/// - Returns: the new URL of the item in the trash
+	@discardableResult
+	public func moveToTrash() -> URL {
+		var url: NSURL?
+		
+		do {
+			try FileManager.local.trashItem(at: self.url, resultingItemURL: &url)
+			
+			return (url ?? NSURL()) as URL
+		} catch {
+			preconditionFailure(String(reflecting: error))
+		}
 	}
 }
