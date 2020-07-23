@@ -8,8 +8,8 @@
 public protocol IOItem {
 	
 	/// Returns true if the item exists, else returns false
-	var exists: Bool { get }
+	@inlinable var exists: Bool { get }
 	
 	/// Deletes the item
-	func delete()
+	@inlinable func delete()
 }
