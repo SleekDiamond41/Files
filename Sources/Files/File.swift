@@ -137,8 +137,14 @@ internal struct _File: File {
 		}
 		
 		do {
-			try FileManager.local.removeItem(atPath: url.absoluteString)
-		} catch {
+			try FileManager.local.removeItem(at: url)
+		} catch let error as NSError {
+			
+			if error.code == 4 {
+				// file already doesn't exist
+				return
+			}
+			
 			// TODO: throw a useful error
 				// or at least don't fail
 			preconditionFailure(String(reflecting: error))

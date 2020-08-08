@@ -1,6 +1,7 @@
 import XCTest
 @testable import Files
 
+@available(OSX 10.11, iOS 1, *)
 final class FilesTests: XCTestCase {
 	
 	let dir = Directory.appSupport.TestData
@@ -49,11 +50,8 @@ final class FilesTests: XCTestCase {
 	@available(iOS 9.0, *)
 	func testGetDirectoryContents() {
 		// configure directories with contents
-		let root = Directory.appSupport
 		
-		print(root)
-		
-		let alpha = root.alpha
+		let alpha = dir.alpha
 		let bravo = alpha.bravo
 		
 		do {
@@ -82,5 +80,29 @@ final class FilesTests: XCTestCase {
 		
 		// clean up
 		alpha.delete()
+	}
+	
+	func testDeletingFile() {
+		let file = dir.file("testDeletingFile", ext: "txt")
+		
+		do {
+			// create the file
+			try file.write("1234567890".data(using: .utf8)!)
+			XCTAssertTrue(file.exists)
+			
+			// get rid of the file
+			file.delete()
+			XCTAssertFalse(file.exists)
+			
+		} catch {
+			
+		}
+	}
+	
+	func test_deleting_file_thatDoesntExist() {
+		let file = dir.file("test_deleting_file_thatDoesntExist", ext: "txt")
+		
+		// this test would currently crash if there's a problem
+		file.delete()
 	}
 }
