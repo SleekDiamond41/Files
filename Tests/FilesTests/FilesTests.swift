@@ -6,7 +6,7 @@ final class FilesTests: XCTestCase {
 	
 	let dir = Directory.appSupport.TestData
 	let filename = "Stuff"
-	var file: File { dir.file(filename, ext: "txt") }
+	var file: File { dir.file(filename, .txt) }
 	
 	override func tearDown() {
 		super.tearDown()
@@ -56,12 +56,12 @@ final class FilesTests: XCTestCase {
 		
 		do {
 			// write stuff so directories and files will be made
-			try alpha.file("one", ext: "txt").write("1111111111".data(using: .utf8)!)
-			try alpha.file("two", ext: "txt").write("2222222222".data(using: .utf8)!)
-			try alpha.file("three", ext: "txt").write("3333333333".data(using: .utf8)!)
+			try alpha.file("one", .txt).write("1111111111".data(using: .utf8)!)
+			try alpha.file("two", .txt).write("2222222222".data(using: .utf8)!)
+			try alpha.file("three", .txt).write("3333333333".data(using: .utf8)!)
 			
-			try bravo.file("one", ext: "txt").write("1111111111".data(using: .utf8)!)
-			try bravo.file("two", ext: "txt").write("2222222222".data(using: .utf8)!)
+			try bravo.file("one", .txt).write("1111111111".data(using: .utf8)!)
+			try bravo.file("two", .txt).write("2222222222".data(using: .utf8)!)
 			
 			// make assertions
 			XCTAssertEqual(alpha.files.count, 3)
@@ -83,7 +83,7 @@ final class FilesTests: XCTestCase {
 	}
 	
 	func testDeletingFile() {
-		let file = dir.file("testDeletingFile", ext: "txt")
+		let file = dir.file("testDeletingFile", .txt)
 		
 		do {
 			// create the file
@@ -100,7 +100,7 @@ final class FilesTests: XCTestCase {
 	}
 	
 	func test_deleting_file_thatDoesntExist() {
-		let file = dir.file("test_deleting_file_thatDoesntExist", ext: "txt")
+		let file = dir.file("test_deleting_file_thatDoesntExist", .txt)
 		
 		// this test would currently crash if there's a problem
 		file.delete()

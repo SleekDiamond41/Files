@@ -62,14 +62,14 @@ public struct Directory: IOItem, Equatable, CustomStringConvertible {
 	}
 	
 	func create() throws {
-		try FileManager.local.createDirectory(atPath: url.path, withIntermediateDirectories: true, attributes: nil)
+		try FileManager.local.createDirectory(at: url, withIntermediateDirectories: true, attributes: nil)
 		
 	}
 	
-	public func file(_ name: String, ext: String) -> File {
+	public func file(_ name: String, _ ext: FileExtension) -> File {
 		return _File(dir: self, url: url
-			.appendingPathComponent(name)
-			.appendingPathExtension(ext))
+						.appendingPathComponent(name)
+						.appendingPathExtension(ext.text))
 	}
 	
 	public func delete() {
