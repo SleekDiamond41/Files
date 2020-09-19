@@ -121,7 +121,7 @@ final class FilesTests: XCTestCase {
 		
 		do {
 			_ = try file.read()
-		} catch FileError.noSuchFile {
+		} catch ReadError.noSuchFile {
 			// this is expected
 		} catch {
 			XCTFail(error.localizedDescription)

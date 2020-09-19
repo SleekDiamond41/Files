@@ -33,8 +33,8 @@ extension File {
 }
 
 
-public enum FileError: Error {
-	case unknown
+public enum ReadError: Error {
+	case unknown(Error)
 	case noSuchFile
 }
 
@@ -114,10 +114,10 @@ internal struct _File: File {
 			
 		} catch let error as NSError {
 			if error.code == NSFileReadNoSuchFileError {
-				throw FileError.noSuchFile
+				throw ReadError.noSuchFile
 			}
 			
-			throw FileError.unknown
+			throw ReadError.unknown(error)
 		}
 	}
 }
