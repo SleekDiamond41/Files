@@ -17,7 +17,7 @@ public struct Directory: IOItem, Equatable, CustomStringConvertible {
 		
 		init(_ error: NSError) {
 			switch error.code {
-			case NSFileNoSuchFileError:
+			case NSFileNoSuchFileError, NSFileReadNoSuchFileError:
 				self = .noSuchItem
 			default:
 				self = .unknown(error)
@@ -70,20 +70,6 @@ public struct Directory: IOItem, Equatable, CustomStringConvertible {
 		return _File(dir: self, url: url
 						.appendingPathComponent(name)
 						.appendingPathExtension(ext.text))
-	}
-	
-	public func delete() {
-		do {
-			try FileManager.local.removeItem(atPath: url.path)
-		} catch let error as NSError {
-			switch IOError(error) {
-			case .noSuchItem:
-				// that's all good
-				break
-			case .unknown:
-				preconditionFailure(String(reflecting: error))
-			}
-		}
 	}
 	
 	@available(OSX 10.11, iOS 9.0, *)

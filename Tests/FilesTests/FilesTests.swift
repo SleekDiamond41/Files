@@ -16,24 +16,19 @@ final class FilesTests: XCTestCase {
 		XCTAssertFalse(file.exists)
 	}
     
-	func testSaveData() {
+	func testSaveData() throws {
 		
 		print(dir)
 		
-		do {
-			XCTAssertFalse(dir.exists)
-			XCTAssertFalse(file.exists)
-			try file.append(filename.data(using: .utf8)!)
-			XCTAssertTrue(dir.exists)
-			XCTAssertTrue(file.exists)
-			
-			let contents = try file.read()
-			if let s = String(data: contents, encoding: .utf8) {
-				XCTAssertEqual(s, filename)
-			}
-			
-		} catch {
-			XCTFail(String(reflecting: error))
+		XCTAssertFalse(dir.exists)
+		XCTAssertFalse(file.exists)
+		try file.append(filename.data(using: .utf8)!)
+		XCTAssertTrue(dir.exists)
+		XCTAssertTrue(file.exists)
+		
+		let contents = try file.read()
+		if let s = String(data: contents, encoding: .utf8) {
+			XCTAssertEqual(s, filename)
 		}
     }
 	
@@ -44,59 +39,49 @@ final class FilesTests: XCTestCase {
 		XCTAssertTrue(Directory.appSupport.exists)
 		
 		// temp not yet implemented
-//		XCTAssertTrue(Directory.temp.exists)
+		if #available(OSX 10.12, *) {
+			XCTAssertTrue(Directory.temp.exists)
+		}
 	}
 	
 	@available(iOS 9.0, *)
-	func testGetDirectoryContents() {
+	func testGetDirectoryContents() throws {
 		// configure directories with contents
 		
 		let alpha = dir.alpha
 		let bravo = alpha.bravo
 		
-		do {
-			// write stuff so directories and files will be made
-			try alpha.file("one", .txt).write("1111111111".data(using: .utf8)!)
-			try alpha.file("two", .txt).write("2222222222".data(using: .utf8)!)
-			try alpha.file("three", .txt).write("3333333333".data(using: .utf8)!)
-			
-			try bravo.file("one", .txt).write("1111111111".data(using: .utf8)!)
-			try bravo.file("two", .txt).write("2222222222".data(using: .utf8)!)
-			
-			// make assertions
-			XCTAssertEqual(alpha.files.count, 3)
-			XCTAssertEqual(bravo.files.count, 2)
-			
-			XCTAssertEqual(alpha.directories.count, 1)
-			XCTAssertEqual(bravo.directories.count, 0)
-			
-			XCTAssertEqual(alpha.files[0].size, 10)
-			
-		} catch {
-			// failures here fall outside the scope of this test,
-			// and should be comvered elsewhere
-			XCTFail(String(describing: error))
-		}
+		// write stuff so directories and files will be made
+		try alpha.file("one", .txt).write("1111111111".data(using: .utf8)!)
+		try alpha.file("two", .txt).write("2222222222".data(using: .utf8)!)
+		try alpha.file("three", .txt).write("3333333333".data(using: .utf8)!)
+		
+		try bravo.file("one", .txt).write("1111111111".data(using: .utf8)!)
+		try bravo.file("two", .txt).write("2222222222".data(using: .utf8)!)
+		
+		// make assertions
+		XCTAssertEqual(alpha.files.count, 3)
+		XCTAssertEqual(bravo.files.count, 2)
+		
+		XCTAssertEqual(alpha.directories.count, 1)
+		XCTAssertEqual(bravo.directories.count, 0)
+		
+		XCTAssertEqual(alpha.files[0].size, 10)
 		
 		// clean up
 		alpha.delete()
 	}
 	
-	func testDeletingFile() {
+	func testDeletingFile() throws {
 		let file = dir.file("testDeletingFile", .txt)
 		
-		do {
-			// create the file
-			try file.write("1234567890".data(using: .utf8)!)
-			XCTAssertTrue(file.exists)
-			
-			// get rid of the file
-			file.delete()
-			XCTAssertFalse(file.exists)
-			
-		} catch {
-			
-		}
+		// create the file
+		try file.write("1234567890".data(using: .utf8)!)
+		XCTAssertTrue(file.exists)
+		
+		// get rid of the file
+		file.delete()
+		XCTAssertFalse(file.exists)
 	}
 	
 	func test_deleting_file_thatDoesntExist() {
@@ -104,5 +89,42 @@ final class FilesTests: XCTestCase {
 		
 		// this test would currently crash if there's a problem
 		file.delete()
+	}
+	
+	func test_deleting_directory_thatDoesntExist() {
+		
+		let dir = self.dir.appending("test_deleting_directory_thatDoesntExist")
+		
+		// this test would currently crash if there's a problem
+		dir.delete()
+	}
+	
+	func testReadFileThatExists() throws {
+		let message = "Hello, World"
+		let data = message.data(using: .utf8)!
+		
+		try file.write(data)
+		
+		let resultData = try file.read()
+		
+		guard let resultString = String(data: resultData, encoding: .utf8) else {
+			XCTFail()
+			return
+		}
+		
+		XCTAssertEqual(message, resultString)
+	}
+	
+	func testReadFileThatDoesntExist() {
+		
+		XCTAssertThrowsError(try file.read())
+		
+		do {
+			_ = try file.read()
+		} catch FileError.noSuchFile {
+			// this is expected
+		} catch {
+			XCTFail(error.localizedDescription)
+		}
 	}
 }

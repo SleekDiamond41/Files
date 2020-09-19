@@ -12,8 +12,6 @@ import Foundation
 // TODO: log errors that may be thrown
 public protocol File: IOItem, CustomStringConvertible {
 	
-	@inlinable var url: URL { get }
-	
 	@inlinable var size: UInt64 { get }
 	
 	/// Writes the data to the file. If the file exists, it will be overwritten. If it does not exist, it will be created, along with any necessary directories.
@@ -36,7 +34,6 @@ extension File {
 
 
 public enum FileError: Error {
-	case noDirectory
 	case unknown
 	case noSuchFile
 }
@@ -77,24 +74,18 @@ internal struct _File: File {
 	
 	func write(_ data: Data) throws {
 		
-		if !dir.exists {
-			do {
-				try dir.create()
-			} catch {
-				// TODO: throw better errors
-				throw WriteError.generic(underlying: error)
+		do {
+			try data.write(to: url)
+			
+		} catch let error as NSError {
+			guard error.code == NSFileNoSuchFileError else {
+				// unknown error
+				throw error
 			}
-		}
-		
-		if exists {
-			do {
-				try data.write(to: url)
-			} catch {
-				// TODO: throw better errors
-				throw WriteError.generic(underlying: error)
-			}
-		} else {
-			FileManager.local.createFile(atPath: url.path, contents: data, attributes: nil)
+			
+			// directory didn't exist. Create it and try writing again
+			try dir.create()
+			try data.write(to: url)
 		}
 	}
 	
@@ -106,13 +97,6 @@ internal struct _File: File {
 			handle.write(data)
 			handle.closeFile()
 			
-		} catch let error as FileError {
-			switch error {
-			case .noSuchFile:
-				try write(data)
-			default:
-				preconditionFailure("UNEXPECTED ERROR WAS THROWN")
-			}
 		} catch let error as NSError {
 			guard error.code == NSFileNoSuchFileError else {
 				// can't recover from other stuff
@@ -124,30 +108,16 @@ internal struct _File: File {
 	}
 	
 	func read() throws -> Data {
-		guard exists else {
-			throw FileError.noSuchFile
-		}
-		
-		return try Data(contentsOf: url)
-	}
-	
-	func delete() {
-		guard exists else {
-			return
-		}
 		
 		do {
-			try FileManager.local.removeItem(at: url)
-		} catch let error as NSError {
+			return try Data(contentsOf: url)
 			
-			if error.code == 4 {
-				// file already doesn't exist
-				return
+		} catch let error as NSError {
+			if error.code == NSFileReadNoSuchFileError {
+				throw FileError.noSuchFile
 			}
 			
-			// TODO: throw a useful error
-				// or at least don't fail
-			preconditionFailure(String(reflecting: error))
+			throw FileError.unknown
 		}
 	}
 }
